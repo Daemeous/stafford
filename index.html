@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stafford — OS Open Roads comparison</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  html, body { margin:0; padding:0; height:100%; font-family: system-ui, sans-serif; }
+  #map { position:absolute; top:0; bottom:0; left:0; right:340px; }
+  #sidebar {
+    position:absolute; top:0; bottom:0; right:0; width:340px;
+    background:#fff; border-left:1px solid #ddd; overflow-y:auto;
+    padding:16px; box-sizing:border-box; font-size:14px; line-height:1.5;
+  }
+  #sidebar h1 { font-size:18px; margin:0 0 4px; }
+  #sidebar h2 { font-size:14px; margin:18px 0 6px; }
+  #sidebar p { color:#333; margin:6px 0; }
+  #sidebar a { color:#1a5fb4; }
+  .legend-row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+  .swatch { width:18px; height:4px; border-radius:2px; flex-shrink:0; }
+  .stat { font-size:22px; font-weight:700; }
+  .stat-label { font-size:12px; color:#666; text-transform:uppercase; letter-spacing:.03em; }
+  #info-box { margin-top:14px; padding:10px; background:#f5f5f5; border-radius:6px; min-height:40px; }
+  .note { font-size:12px; color:#777; }
+  @media (max-width: 800px) {
+    #map { right:0; bottom:45%; }
+    #sidebar { top:55%; width:100%; left:0; border-left:none; border-top:1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="sidebar">
+  <h1>Stafford — OS Open Roads</h1>
+  <p>Same wards as the <a href="https://daemeous.github.io/leaflet-map/" target="_blank" rel="noopener">live Stafford tracker</a> (OSM-derived), but every road here comes straight from Ordnance Survey's OS Open Roads dataset instead. This page has no editing/tracking — it's a raw visual comparison only.</p>
+
+  <div class="stat" id="stat-count">–</div>
+  <div class="stat-label">road segments shown</div>
+
+  <h2>Colour key</h2>
+  <div class="legend-row"><span class="swatch" style="background:#1a5fb4"></span> Named road (has a street name)</div>
+  <div class="legend-row"><span class="swatch" style="background:#e5a50a"></span> Route-numbered only (e.g. "A518" — no street name in this dataset)</div>
+  <div class="legend-row"><span class="swatch" style="background:#c01c28"></span> Unnamed (neither a name nor a route number)</div>
+  <div class="legend-row"><span class="swatch" style="background:#888; height:2px;"></span> Ward boundary</div>
+
+  <h2>Click a road for details</h2>
+  <div id="info-box">Click any line on the map.</div>
+
+  <p class="note">Built from <code>oproad_gb.gpkg</code> clipped to Stafford's 17 wards. Where OS Open Roads leaves a road's name blank, its route number (A/B/motorway classification) is used as a fallback label; roads with neither are shown in red as genuinely unidentified in this dataset.</p>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map', { zoomControl: true }).setView([52.8, -2.12], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors, roads © Ordnance Survey (OS Open Roads, OGL)',
+  maxZoom: 19
+}).addTo(map);
+
+function roadColor(props) {
+  if (props.Street && props.Street !== 'Unnamed Road') {
+    // route-number-only labels are short alphanumeric codes like "A518"/"M6"/"B5405"
+    if (/^[AMB]\d/.test(props.Street)) return '#e5a50a';
+    return '#1a5fb4';
+  }
+  return '#c01c28';
+}
+
+const infoBox = document.getElementById('info-box');
+
+fetch('wards.geojson').then(r => r.json()).then(data => {
+  L.geoJSON(data, {
+    style: { color: '#888', weight: 1.5, fillOpacity: 0, dashArray: '4,3' }
+  }).addTo(map);
+});
+
+fetch('roads.geojson').then(r => r.json()).then(data => {
+  document.getElementById('stat-count').textContent = data.features.length.toLocaleString();
+  const layer = L.geoJSON(data, {
+    style: f => ({ color: roadColor(f.properties), weight: 2.5, opacity: 0.85 }),
+    onEachFeature: (feature, lyr) => {
+      lyr.on('click', () => {
+        const p = feature.properties;
+        infoBox.innerHTML = `<strong>${p.Street}</strong><br>Ward: ${p.Ward}<br>Classification: ${p.road_classification}`;
+      });
+      lyr.on('mouseover', () => lyr.setStyle({ weight: 5 }));
+      lyr.on('mouseout', () => lyr.setStyle({ weight: 2.5 }));
+    }
+  }).addTo(map);
+  map.fitBounds(layer.getBounds(), { padding: [20,20] });
+});
+</script>
+</body>
+</html>
