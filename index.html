@@ -77,18 +77,34 @@ fetch('wards.geojson').then(r => r.json()).then(data => {
 
 fetch('roads.geojson').then(r => r.json()).then(data => {
   document.getElementById('stat-count').textContent = data.features.length.toLocaleString();
-  const layer = L.geoJSON(data, {
-    style: f => ({ color: roadColor(f.properties), weight: 2.5, opacity: 0.85 }),
-    onEachFeature: (feature, lyr) => {
-      lyr.on('click', () => {
-        const p = feature.properties;
-        infoBox.innerHTML = `<strong>${p.Street}</strong><br>Ward: ${p.Ward}<br>Classification: ${p.road_classification}`;
-      });
-      lyr.on('mouseover', () => lyr.setStyle({ weight: 5 }));
-      lyr.on('mouseout', () => lyr.setStyle({ weight: 2.5 }));
-    }
-  }).addTo(map);
-  map.fitBounds(layer.getBounds(), { padding: [20,20] });
+  const bounds = L.latLngBounds([]);
+
+  data.features.forEach(feature => {
+    const coordsToLatLngs = coords => coords.map(([lon, lat]) => [lat, lon]);
+    const lines = feature.geometry.type === 'MultiLineString'
+      ? feature.geometry.coordinates.map(coordsToLatLngs)
+      : [coordsToLatLngs(feature.geometry.coordinates)];
+
+    const colour = roadColor(feature.properties);
+    // Visible line stays thin for legibility at scale; a separate, much
+    // wider transparent line underneath actually receives clicks/hover —
+    // a bare 2.5px line is too thin a hit target, same fix core.js uses.
+    const visible = L.polyline(lines, { color: colour, weight: 2.5, opacity: 0.85, interactive: false });
+    const hit = L.polyline(lines, { color: 'transparent', weight: 16, opacity: 0, interactive: true });
+
+    hit.on('click', () => {
+      const p = feature.properties;
+      infoBox.innerHTML = `<strong>${p.Street}</strong><br>Ward: ${p.Ward}<br>Classification: ${p.road_classification}`;
+    });
+    hit.on('mouseover', () => visible.setStyle({ weight: 5 }));
+    hit.on('mouseout', () => visible.setStyle({ weight: 2.5 }));
+
+    visible.addTo(map);
+    hit.addTo(map);
+    lines.forEach(line => bounds.extend(line));
+  });
+
+  map.fitBounds(bounds, { padding: [20,20] });
 });
 </script>
 </body>
