@@ -3,51 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stafford — OS Open Roads comparison</title>
+<title>Stafford — OSM vs OS Open Roads</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   html, body { margin:0; padding:0; height:100%; font-family: system-ui, sans-serif; }
-  #map { position:absolute; top:0; bottom:0; left:0; right:340px; }
+  #map { position:absolute; top:0; bottom:0; left:0; right:360px; }
   #sidebar {
-    position:absolute; top:0; bottom:0; right:0; width:340px;
+    position:absolute; top:0; bottom:0; right:0; width:360px;
     background:#fff; border-left:1px solid #ddd; overflow-y:auto;
     padding:16px; box-sizing:border-box; font-size:14px; line-height:1.5;
   }
-  #sidebar h1 { font-size:18px; margin:0 0 4px; }
-  #sidebar h2 { font-size:14px; margin:18px 0 6px; }
+  #sidebar h1 { font-size:17px; margin:0 0 4px; }
+  #sidebar h2 { font-size:13px; margin:16px 0 6px; text-transform:uppercase; letter-spacing:.03em; color:#666; }
   #sidebar p { color:#333; margin:6px 0; }
   #sidebar a { color:#1a5fb4; }
-  .legend-row { display:flex; align-items:center; gap:8px; margin:4px 0; }
-  .swatch { width:18px; height:4px; border-radius:2px; flex-shrink:0; }
-  .stat { font-size:22px; font-weight:700; }
-  .stat-label { font-size:12px; color:#666; text-transform:uppercase; letter-spacing:.03em; }
-  #info-box { margin-top:14px; padding:10px; background:#f5f5f5; border-radius:6px; min-height:40px; }
-  .note { font-size:12px; color:#777; }
+  .mode-tabs { display:flex; gap:4px; margin-top:4px; }
+  .mode-tab {
+    flex:1; padding:8px 4px; text-align:center; font-size:12.5px; font-weight:600;
+    border:1px solid #ccc; border-radius:6px; background:#f7f7f7; cursor:pointer; color:#444;
+  }
+  .mode-tab.active { background:#1a5fb4; color:#fff; border-color:#1a5fb4; }
+  .legend-row { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:13px; }
+  .swatch { width:20px; height:4px; border-radius:2px; flex-shrink:0; }
+  .swatch.dashed { background-image: repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 10px); background-color: transparent !important; height:3px; }
+  .stat-row { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; border-bottom:1px solid #f0f0f0; }
+  .stat-row b { font-variant-numeric: tabular-nums; }
+  #info-box { margin-top:6px; padding:10px; background:#f5f5f5; border-radius:6px; min-height:36px; font-size:13px; }
+  .note { font-size:11.5px; color:#888; margin-top:14px; }
+  label.toggle-row { display:flex; align-items:center; gap:6px; font-size:13px; margin:6px 0; cursor:pointer; }
+  select#ward-jump { width:100%; padding:5px; font-size:13px; margin-top:4px; }
   @media (max-width: 800px) {
-    #map { right:0; bottom:45%; }
-    #sidebar { top:55%; width:100%; left:0; border-left:none; border-top:1px solid #ddd; }
+    #map { right:0; bottom:58%; }
+    #sidebar { top:42%; width:100%; left:0; border-left:none; border-top:1px solid #ddd; }
   }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div id="sidebar">
-  <h1>Stafford — OS Open Roads</h1>
-  <p>Same wards as the <a href="https://daemeous.github.io/leaflet-map/" target="_blank" rel="noopener">live Stafford tracker</a> (OSM-derived), but every road here comes straight from Ordnance Survey's OS Open Roads dataset instead. This page has no editing/tracking — it's a raw visual comparison only.</p>
+  <h1>Stafford — OSM vs OS Open Roads</h1>
+  <p style="font-size:12.5px;">Compares the OSM-derived <a href="https://daemeous.github.io/leaflet-map/" target="_blank" rel="noopener">live Stafford tracker</a>'s road data against Ordnance Survey's OS Open Roads for the same 17 wards. Read-only — no editing/tracking here.</p>
 
-  <div class="stat" id="stat-count">–</div>
-  <div class="stat-label">road segments shown</div>
+  <h2>View</h2>
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="compare">Compare</div>
+    <div class="mode-tab" data-mode="osm">OSM</div>
+    <div class="mode-tab" data-mode="os">OS Open Roads</div>
+  </div>
 
-  <h2>Colour key</h2>
-  <div class="legend-row"><span class="swatch" style="background:#1a5fb4"></span> Named road (has a street name)</div>
-  <div class="legend-row"><span class="swatch" style="background:#e5a50a"></span> Route-numbered only (e.g. "A518" — no street name in this dataset)</div>
-  <div class="legend-row"><span class="swatch" style="background:#c01c28"></span> Unnamed (neither a name nor a route number)</div>
-  <div class="legend-row"><span class="swatch" style="background:#888; height:2px;"></span> Ward boundary</div>
+  <div id="compare-controls" style="margin-top:10px;">
+    <label class="toggle-row"><input type="checkbox" id="toggle-matching"> Show unchanged/matching stretches</label>
+  </div>
+
+  <h2 id="legend-title">Legend</h2>
+  <div id="legend"></div>
+
+  <h2>Stats</h2>
+  <div id="stats"></div>
+
+  <h2>Jump to ward</h2>
+  <select id="ward-jump"><option value="">— select a ward —</option></select>
 
   <h2>Click a road for details</h2>
   <div id="info-box">Click any line on the map.</div>
 
-  <p class="note">Built from <code>oproad_gb.gpkg</code> clipped to Stafford's 17 wards. Where OS Open Roads leaves a road's name blank, its route number (A/B/motorway classification) is used as a fallback label; roads with neither are shown in red as genuinely unidentified in this dataset.</p>
+  <p class="note">
+    <b>Compare mode</b> categorises every stretch of OS Open Roads by whether it overlaps OSM's own road network (named roads + OSM's genuinely-unnamed-but-mapped ways) within 20m: fully missing from OSM ("new"), or overlapping for only part of its length ("diverges" — only the non-overlapping stretch is highlighted). OSM's own previously-unnamed clusters are shown separately, split into ones a nearby OS Open Roads match could name ("renamed") and ones neither dataset names ("unknown"). Motorways/slip roads are excluded entirely from the diff — no pedestrian frontage, so any UPRNs a buffer would catch near one aren't real doorsteps.
+  </p>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -58,53 +80,197 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-function roadColor(props) {
-  if (props.Street && props.Street !== 'Unnamed Road') {
-    // route-number-only labels are short alphanumeric codes like "A518"/"M6"/"B5405"
-    if (/^[AMB]\d/.test(props.Street)) return '#e5a50a';
-    return '#1a5fb4';
-  }
-  return '#c01c28';
+const COLOURS = {
+  named:    '#1a5fb4',
+  renamed:  '#9b59b6',
+  unknown:  '#c01c28',
+  matches:  '#aaaaaa',
+  diverges: '#e8760c',
+  new:      '#1fa672',
+  route_number: '#e5a50a',
+  none:     '#c01c28',
+};
+
+const LEGENDS = {
+  compare: [
+    ['new', 'New — OS Open Roads has this, OSM is missing it entirely'],
+    ['diverges', 'Diverges — only part of this OS stretch overlaps OSM'],
+    ['renamed', 'OSM road auto-named via a nearby OS Open Roads match'],
+    ['unknown', "OSM road neither dataset names"],
+    ['matches', 'Matches — same road in both (hidden by default)'],
+  ],
+  osm: [
+    ['named', 'Named road'],
+    ['renamed', 'Auto-named via OS Open Roads (was unnamed in OSM)'],
+    ['unknown', 'Still unnamed (absent from both datasets)'],
+  ],
+  os: [
+    ['named', 'Has a street name (name_1)'],
+    ['route_number', 'Route-numbered only (e.g. "A518") — no street name'],
+    ['none', 'Unidentified — no name, no route number'],
+  ],
+};
+
+let mode = 'compare';
+let showMatching = false;
+let allFeatures = [];
+const layersByMode = { compare: L.layerGroup(), osm: L.layerGroup(), os: L.layerGroup() };
+let matchingSub = [];   // compare-mode "matches" polylines, toggled separately
+
+function styleForCompare(f) {
+  const p = f.properties;
+  if (p.source === 'OSM') return { color: COLOURS[p.cat], weight: p.cat === 'named' ? 1.5 : 3.5, opacity: p.cat === 'named' ? 0.35 : 0.95 };
+  if (p.cat === 'matches') return { color: COLOURS.matches, weight: 1.5, opacity: 0.5 };
+  return { color: COLOURS[p.cat], weight: 3.5, opacity: 0.95 };
+}
+function styleForOsm(f) {
+  return { color: COLOURS[f.properties.cat], weight: 2.5, opacity: 0.85 };
+}
+function styleForOs(f) {
+  return { color: COLOURS[f.properties.label_source] || '#888', weight: 2.5, opacity: 0.85 };
 }
 
 const infoBox = document.getElementById('info-box');
 
+function makeHitPair(feature, style) {
+  const coordsToLatLngs = coords => coords.map(([lon, lat]) => [lat, lon]);
+  const lines = feature.geometry.type === 'MultiLineString'
+    ? feature.geometry.coordinates.map(coordsToLatLngs)
+    : [coordsToLatLngs(feature.geometry.coordinates)];
+  const visible = L.polyline(lines, { ...style, interactive: false });
+  const hit = L.polyline(lines, { color: 'transparent', weight: 16, opacity: 0, interactive: true });
+  hit.on('click', () => {
+    const p = feature.properties;
+    infoBox.innerHTML = `<strong>${p.Street}</strong><br>Source: ${p.source}${p.cat ? ' ('+p.cat+')' : ''}<br>Ward: ${p.Ward}` +
+      (p.road_classification ? `<br>Classification: ${p.road_classification}` : '');
+  });
+  hit.on('mouseover', () => visible.setStyle({ weight: (style.weight||2.5) + 2.5 }));
+  hit.on('mouseout', () => visible.setStyle(style));
+  return [visible, hit];
+}
+
 fetch('wards.geojson').then(r => r.json()).then(data => {
-  L.geoJSON(data, {
-    style: { color: '#888', weight: 1.5, fillOpacity: 0, dashArray: '4,3' }
-  }).addTo(map);
+  const wardLayer = L.geoJSON(data, { style: { color: '#888', weight: 1.5, fillOpacity: 0, dashArray: '4,3' } }).addTo(map);
+  const sel = document.getElementById('ward-jump');
+  data.features.map(f => f.properties.Name).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name.replace(/ Ward$/, '');
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', () => {
+    if (!sel.value) return;
+    const feat = data.features.find(f => f.properties.Name === sel.value);
+    if (feat) map.fitBounds(L.geoJSON(feat).getBounds(), { padding: [20,20] });
+  });
 });
 
-fetch('roads.geojson').then(r => r.json()).then(data => {
-  document.getElementById('stat-count').textContent = data.features.length.toLocaleString();
+fetch('roads_compare.geojson').then(r => r.json()).then(data => {
+  allFeatures = data.features;
   const bounds = L.latLngBounds([]);
 
-  data.features.forEach(feature => {
-    const coordsToLatLngs = coords => coords.map(([lon, lat]) => [lat, lon]);
-    const lines = feature.geometry.type === 'MultiLineString'
-      ? feature.geometry.coordinates.map(coordsToLatLngs)
-      : [coordsToLatLngs(feature.geometry.coordinates)];
+  allFeatures.forEach(f => {
+    const p = f.properties;
 
-    const colour = roadColor(feature.properties);
-    // Visible line stays thin for legibility at scale; a separate, much
-    // wider transparent line underneath actually receives clicks/hover —
-    // a bare 2.5px line is too thin a hit target, same fix core.js uses.
-    const visible = L.polyline(lines, { color: colour, weight: 2.5, opacity: 0.85, interactive: false });
-    const hit = L.polyline(lines, { color: 'transparent', weight: 16, opacity: 0, interactive: true });
+    // Compare-mode layer
+    const [cv, ch] = makeHitPair(f, styleForCompare(f));
+    if (p.source === 'OS' && p.cat === 'matches') {
+      matchingSub.push(cv, ch);
+    } else {
+      layersByMode.compare.addLayer(cv); layersByMode.compare.addLayer(ch);
+    }
 
-    hit.on('click', () => {
-      const p = feature.properties;
-      infoBox.innerHTML = `<strong>${p.Street}</strong><br>Ward: ${p.Ward}<br>Classification: ${p.road_classification}`;
-    });
-    hit.on('mouseover', () => visible.setStyle({ weight: 5 }));
-    hit.on('mouseout', () => visible.setStyle({ weight: 2.5 }));
+    // OSM-only layer
+    if (p.source === 'OSM') {
+      const [ov, oh] = makeHitPair(f, styleForOsm(f));
+      layersByMode.osm.addLayer(ov); layersByMode.osm.addLayer(oh);
+    }
 
-    visible.addTo(map);
-    hit.addTo(map);
-    lines.forEach(line => bounds.extend(line));
+    // OS-only layer (every OS piece, coloured by label_source so a split
+    // segment still reads as one continuously-coloured road)
+    if (p.source === 'OS') {
+      const [sv, sh] = makeHitPair(f, styleForOs(f));
+      layersByMode.os.addLayer(sv); layersByMode.os.addLayer(sh);
+    }
+
+    try {
+      const coordsToLatLngs = coords => coords.map(([lon, lat]) => [lat, lon]);
+      const lines = f.geometry.type === 'MultiLineString' ? f.geometry.coordinates.map(coordsToLatLngs) : [coordsToLatLngs(f.geometry.coordinates)];
+      lines.forEach(line => bounds.extend(line));
+    } catch (e) {}
   });
 
+  layersByMode.compare.addTo(map);
+  updateLegendAndStats();
   map.fitBounds(bounds, { padding: [20,20] });
+});
+
+function updateLegendAndStats() {
+  document.getElementById('legend-title').textContent = 'Legend';
+  const legend = document.getElementById('legend');
+  legend.innerHTML = LEGENDS[mode].map(([cat, label]) => {
+    if (mode === 'compare' && cat === 'matches' && !showMatching) {
+      return `<div class="legend-row" style="opacity:.45"><span class="swatch" style="background:${COLOURS[cat]}"></span>${label} — hidden</div>`;
+    }
+    return `<div class="legend-row"><span class="swatch" style="background:${COLOURS[cat]}"></span>${label}</div>`;
+  }).join('');
+
+  const stats = document.getElementById('stats');
+  function lengthKm(f) {
+    // rough length in metres via haversine over the line's points, summed
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const coordsList = f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : [f.geometry.coordinates];
+    let total = 0;
+    coordsList.forEach(coords => {
+      for (let i = 1; i < coords.length; i++) {
+        const [lon1, lat1] = coords[i-1], [lon2, lat2] = coords[i];
+        const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
+        const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+        total += 2*R*Math.asin(Math.sqrt(a));
+      }
+    });
+    return total / 1000;
+  }
+
+  let rows = [];
+  if (mode === 'compare') {
+    LEGENDS.compare.forEach(([cat]) => {
+      const feats = allFeatures.filter(f => (cat==='named'||cat==='renamed'||cat==='unknown' ? f.properties.source==='OSM' : f.properties.source==='OS') && f.properties.cat === cat);
+      const km = feats.reduce((s,f) => s + lengthKm(f), 0);
+      rows.push([LEGENDS.compare.find(l=>l[0]===cat)[1].split(' —')[0].split(' (')[0], feats.length, km]);
+    });
+  } else {
+    const src = mode === 'osm' ? 'OSM' : 'OS';
+    const key = mode === 'osm' ? 'cat' : 'label_source';
+    LEGENDS[mode].forEach(([cat, label]) => {
+      const feats = allFeatures.filter(f => f.properties.source === src && f.properties[key] === cat);
+      const km = feats.reduce((s,f) => s + lengthKm(f), 0);
+      rows.push([label.split(' (')[0], feats.length, km]);
+    });
+  }
+  stats.innerHTML = rows.map(([label, n, km]) => `<div class="stat-row"><span>${label}</span><b>${n.toLocaleString()} / ${km.toFixed(1)} km</b></div>`).join('');
+}
+
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    Object.values(layersByMode).forEach(l => map.removeLayer(l));
+    matchingSub.forEach(l => map.removeLayer(l));
+    mode = tab.dataset.mode;
+    layersByMode[mode].addTo(map);
+    if (mode === 'compare' && showMatching) matchingSub.forEach(l => l.addTo(map));
+    document.getElementById('compare-controls').style.display = mode === 'compare' ? 'block' : 'none';
+    updateLegendAndStats();
+  });
+});
+
+document.getElementById('toggle-matching').addEventListener('change', (e) => {
+  showMatching = e.target.checked;
+  if (mode !== 'compare') return;
+  if (showMatching) matchingSub.forEach(l => l.addTo(map));
+  else matchingSub.forEach(l => map.removeLayer(l));
+  updateLegendAndStats();
 });
 </script>
 </body>

@@ -1,19 +1,29 @@
 # Stafford — OS Open Roads comparison
 
-A static, read-only map of Stafford's roads sourced from Ordnance Survey's
-**OS Open Roads** dataset, built to visually compare against the
-OSM-derived [live Stafford leafletting tracker](https://daemeous.github.io/leaflet-map/).
+A static, read-only map comparing Stafford's OSM-derived road data (the
+same pipeline behind the [live Stafford leafletting tracker](https://daemeous.github.io/leaflet-map/))
+against Ordnance Survey's **OS Open Roads** dataset, for the same 17
+wards. Not a tracker — no editing, no Google Sheet backend, no residence
+counts.
 
-This is not a tracker — no editing, no Google Sheet backend, no residence
-counts. It exists purely to eyeball how OS Open Roads' road coverage and
-naming compares to the OSM-based pipeline for the same 17 wards.
+Three view modes (top of the sidebar):
 
-Roads are colour-coded:
+- **Compare** — overlays both datasets and highlights the differences:
+  roads OS Open Roads has that OSM is missing entirely ("new"), stretches
+  where the two only partially overlap ("diverges" — just the
+  non-overlapping part is highlighted), and OSM's own previously-unnamed
+  road clusters split into ones a nearby OS Open Roads match could name
+  ("renamed") vs ones neither dataset names ("unknown"). Matching/unchanged
+  stretches are hidden by default (toggle to show) so the differences are
+  what stands out.
+- **OSM** — OSM's own road network, coloured by whether it was already
+  named, auto-named via an OS Open Roads match, or still unnamed.
+- **OS Open Roads** — coloured by how the road is identified: a real
+  street name, a route number only (A/B roads), or neither. Motorways and
+  slip roads are excluded from the diff entirely (no pedestrian frontage).
 
-- **Blue** — has a real street name in OS Open Roads (`name_1`)
-- **Amber** — no street name, but has a classified route number (A/B roads,
-  motorways) used as a fallback label
-- **Red** — neither a name nor a route number in this dataset
+A stats panel and click-for-details popup are available in every mode, plus
+a ward quick-jump dropdown.
 
 See [leaflet-pipeline](https://github.com/Daemeous/leaflet-pipeline) for
 the data pipeline this compares against.
